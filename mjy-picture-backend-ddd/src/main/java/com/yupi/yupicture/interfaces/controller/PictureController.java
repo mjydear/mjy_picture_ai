@@ -75,6 +75,8 @@ public class PictureController {
 
     private static final Duration PICTURE_LIST_TOTAL_CACHE_TTL = Duration.ofMinutes(10);
 
+    private static final Duration PICTURE_LIST_NULL_CACHE_TTL = Duration.ofSeconds(30);
+
     private static final String PICTURE_LIST_PAGE_CACHE_KEY_PREFIX = "yupicture:picture:list:vo:page:";
 
     private static final String PICTURE_LIST_TOTAL_CACHE_KEY_PREFIX = "yupicture:picture:list:vo:total:";
@@ -259,41 +261,34 @@ public class PictureController {
     private Page<PictureVO> listPublicPictureVOByPageWithCache(PictureQueryRequest pictureQueryRequest,
                                                                HttpServletRequest request) {
         String pageCacheKey = buildPictureListPageCacheKey(pictureQueryRequest);
-        String cachedPageValue = multiLevelCacheService.get(pageCacheKey);
-        if (cachedPageValue != null) {
-            return JSONUtil.toBean(cachedPageValue, Page.class);
-        }
-
-        long current = pictureQueryRequest.getCurrent();
-        long size = pictureQueryRequest.getPageSize();
-        Long cachedTotal = getCachedPictureListTotal(pictureQueryRequest);
-        Page<Picture> picturePage;
-        if (cachedTotal != null) {
-            picturePage = pictureApplicationService.page(new Page<>(current, size, false),
-                    pictureApplicationService.getQueryWrapper(pictureQueryRequest));
-            picturePage.setTotal(cachedTotal);
-        } else {
-            picturePage = pictureApplicationService.page(new Page<>(current, size),
-                    pictureApplicationService.getQueryWrapper(pictureQueryRequest));
-            multiLevelCacheService.put(buildPictureListTotalCacheKey(pictureQueryRequest),
-                    String.valueOf(picturePage.getTotal()), PICTURE_LIST_TOTAL_CACHE_TTL);
-        }
-
-        Page<PictureVO> pictureVOPage = pictureApplicationService.getPictureVOPage(picturePage, request);
-        multiLevelCacheService.put(pageCacheKey, JSONUtil.toJsonStr(pictureVOPage), PICTURE_LIST_PAGE_CACHE_TTL);
-        return pictureVOPage;
+        String cachedPageValue = multiLevelCacheService.getOrLoadWithMutex(pageCacheKey, PICTURE_LIST_PAGE_CACHE_TTL,
+                PICTURE_LIST_NULL_CACHE_TTL, () -> JSONUtil.toJsonStr(loadPublicPictureVOPage(pictureQueryRequest, request)));
+        return JSONUtil.toBean(cachedPageValue, Page.class);
     }
 
-    private Long getCachedPictureListTotal(PictureQueryRequest pictureQueryRequest) {
-        String cachedTotal = multiLevelCacheService.get(buildPictureListTotalCacheKey(pictureQueryRequest));
+    private Page<PictureVO> loadPublicPictureVOPage(PictureQueryRequest pictureQueryRequest,
+                                                    HttpServletRequest request) {
+        long current = pictureQueryRequest.getCurrent();
+        long size = pictureQueryRequest.getPageSize();
+        Long total = getPictureListTotalWithCache(pictureQueryRequest);
+        Page<Picture> picturePage = pictureApplicationService.page(new Page<>(current, size, false),
+                pictureApplicationService.getQueryWrapper(pictureQueryRequest));
+        picturePage.setTotal(total);
+        return pictureApplicationService.getPictureVOPage(picturePage, request);
+    }
+
+    private Long getPictureListTotalWithCache(PictureQueryRequest pictureQueryRequest) {
+        String cachedTotal = multiLevelCacheService.getOrLoadWithMutex(buildPictureListTotalCacheKey(pictureQueryRequest),
+                PICTURE_LIST_TOTAL_CACHE_TTL, PICTURE_LIST_NULL_CACHE_TTL,
+                () -> String.valueOf(pictureApplicationService.count(pictureApplicationService.getQueryWrapper(pictureQueryRequest))));
         if (StrUtil.isBlank(cachedTotal)) {
-            return null;
+            return 0L;
         }
         try {
             return Long.parseLong(cachedTotal);
         } catch (NumberFormatException e) {
             log.warn("invalid picture list total cache, value={}", cachedTotal, e);
-            return null;
+            return pictureApplicationService.count(pictureApplicationService.getQueryWrapper(pictureQueryRequest));
         }
     }
 
