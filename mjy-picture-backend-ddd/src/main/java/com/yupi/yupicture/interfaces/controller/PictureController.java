@@ -1,11 +1,9 @@
 package com.yupi.yupicture.interfaces.controller;
 
-import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.yupi.yupicture.infrastructure.annotation.AuthCheck;
 import com.yupi.yupicture.infrastructure.api.aliyunai.AliYunAiApi;
 import com.yupi.yupicture.infrastructure.api.aliyunai.model.CreateOutPaintingTaskResponse;
@@ -34,19 +32,18 @@ import com.yupi.yupicture.interfaces.vo.picture.PictureVO;
 import com.yupi.yupicture.application.service.PictureApplicationService;
 import com.yupi.yupicture.application.service.SpaceApplicationService;
 import com.yupi.yupicture.application.service.UserApplicationService;
+import com.yupi.yupicture.shared.cache.MultiLevelCacheService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author 程序员鱼皮 <a href="https://www.codefather.cn">编程导航原创项目</a>
@@ -66,7 +63,7 @@ public class PictureController {
     private SpaceApplicationService spaceApplicationService;
 
     @Resource
-    private StringRedisTemplate stringRedisTemplate;
+    private MultiLevelCacheService multiLevelCacheService;
 
     @Resource
     private AliYunAiApi aliYunAiApi;
@@ -74,15 +71,13 @@ public class PictureController {
     @Resource
     private SpaceUserAuthManager spaceUserAuthManager;
 
-    /**
-     * 本地缓存
-     */
-    private final Cache<String, String> LOCAL_CACHE = Caffeine.newBuilder()
-            .initialCapacity(1024)
-            .maximumSize(10_000L) // 最大 10000 条
-            // 缓存 5 分钟后移除
-            .expireAfterWrite(Duration.ofMinutes(5))
-            .build();
+    private static final Duration PICTURE_LIST_PAGE_CACHE_TTL = Duration.ofMinutes(5);
+
+    private static final Duration PICTURE_LIST_TOTAL_CACHE_TTL = Duration.ofMinutes(10);
+
+    private static final String PICTURE_LIST_PAGE_CACHE_KEY_PREFIX = "yupicture:picture:list:vo:page:";
+
+    private static final String PICTURE_LIST_TOTAL_CACHE_KEY_PREFIX = "yupicture:picture:list:vo:total:";
 
     /**
      * 上传图片（可重新上传）
@@ -231,6 +226,7 @@ public class PictureController {
             // 普通用户默认只能看到审核通过的数据
             pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
             pictureQueryRequest.setNullSpaceId(true);
+            return ResultUtils.success(listPublicPictureVOByPageWithCache(pictureQueryRequest, request));
         } else {
             boolean hasPermission = StpKit.SPACE.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
             ThrowUtils.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR);
@@ -257,47 +253,65 @@ public class PictureController {
     @PostMapping("/list/page/vo/cache")
     public BaseResponse<Page<PictureVO>> listPictureVOByPageWithCache(@RequestBody PictureQueryRequest pictureQueryRequest,
                                                                       HttpServletRequest request) {
+        return listPictureVOByPage(pictureQueryRequest, request);
+    }
+
+    private Page<PictureVO> listPublicPictureVOByPageWithCache(PictureQueryRequest pictureQueryRequest,
+                                                               HttpServletRequest request) {
+        String pageCacheKey = buildPictureListPageCacheKey(pictureQueryRequest);
+        String cachedPageValue = multiLevelCacheService.get(pageCacheKey);
+        if (cachedPageValue != null) {
+            return JSONUtil.toBean(cachedPageValue, Page.class);
+        }
+
         long current = pictureQueryRequest.getCurrent();
         long size = pictureQueryRequest.getPageSize();
-        // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        // 普通用户默认只能看到审核通过的数据
-        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
-        // 查询缓存，缓存中没有，再查询数据库
-        // 构建缓存的 key
-        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
-        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
-        String cacheKey = String.format("yupicture:listPictureVOByPage:%s", hashKey);
-        // 1. 先从本地缓存中查询
-        String cachedValue = LOCAL_CACHE.getIfPresent(cacheKey);
-        if (cachedValue != null) {
-            // 如果缓存命中，返回结果
-            Page<PictureVO> cachedPage = JSONUtil.toBean(cachedValue, Page.class);
-            return ResultUtils.success(cachedPage);
+        Long cachedTotal = getCachedPictureListTotal(pictureQueryRequest);
+        Page<Picture> picturePage;
+        if (cachedTotal != null) {
+            picturePage = pictureApplicationService.page(new Page<>(current, size, false),
+                    pictureApplicationService.getQueryWrapper(pictureQueryRequest));
+            picturePage.setTotal(cachedTotal);
+        } else {
+            picturePage = pictureApplicationService.page(new Page<>(current, size),
+                    pictureApplicationService.getQueryWrapper(pictureQueryRequest));
+            multiLevelCacheService.put(buildPictureListTotalCacheKey(pictureQueryRequest),
+                    String.valueOf(picturePage.getTotal()), PICTURE_LIST_TOTAL_CACHE_TTL);
         }
-        // 2. 本地缓存未命中，查询 Redis 分布式缓存
-        ValueOperations<String, String> opsForValue = stringRedisTemplate.opsForValue();
-        cachedValue = opsForValue.get(cacheKey);
-        if (cachedValue != null) {
-            // 如果缓存命中，更新本地缓存，返回结果
-            LOCAL_CACHE.put(cacheKey, cachedValue);
-            Page<PictureVO> cachedPage = JSONUtil.toBean(cachedValue, Page.class);
-            return ResultUtils.success(cachedPage);
-        }
-        // 3. 查询数据库
-        Page<Picture> picturePage = pictureApplicationService.page(new Page<>(current, size),
-                pictureApplicationService.getQueryWrapper(pictureQueryRequest));
+
         Page<PictureVO> pictureVOPage = pictureApplicationService.getPictureVOPage(picturePage, request);
-        // 4. 更新缓存
-        // 更新 Redis 缓存
-        String cacheValue = JSONUtil.toJsonStr(pictureVOPage);
-        // 设置缓存的过期时间，5 - 10 分钟过期，防止缓存雪崩
-        int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
-        opsForValue.set(cacheKey, cacheValue, cacheExpireTime, TimeUnit.SECONDS);
-        // 写入本地缓存
-        LOCAL_CACHE.put(cacheKey, cacheValue);
-        // 获取封装类
-        return ResultUtils.success(pictureVOPage);
+        multiLevelCacheService.put(pageCacheKey, JSONUtil.toJsonStr(pictureVOPage), PICTURE_LIST_PAGE_CACHE_TTL);
+        return pictureVOPage;
+    }
+
+    private Long getCachedPictureListTotal(PictureQueryRequest pictureQueryRequest) {
+        String cachedTotal = multiLevelCacheService.get(buildPictureListTotalCacheKey(pictureQueryRequest));
+        if (StrUtil.isBlank(cachedTotal)) {
+            return null;
+        }
+        try {
+            return Long.parseLong(cachedTotal);
+        } catch (NumberFormatException e) {
+            log.warn("invalid picture list total cache, value={}", cachedTotal, e);
+            return null;
+        }
+    }
+
+    private String buildPictureListPageCacheKey(PictureQueryRequest pictureQueryRequest) {
+        return PICTURE_LIST_PAGE_CACHE_KEY_PREFIX + digest(JSONUtil.toJsonStr(pictureQueryRequest));
+    }
+
+    private String buildPictureListTotalCacheKey(PictureQueryRequest pictureQueryRequest) {
+        JSONObject condition = JSONUtil.parseObj(pictureQueryRequest);
+        condition.remove("current");
+        condition.remove("pageSize");
+        condition.remove("sortField");
+        condition.remove("sortOrder");
+        return PICTURE_LIST_TOTAL_CACHE_KEY_PREFIX + digest(JSONUtil.toJsonStr(condition));
+    }
+
+    private String digest(String content) {
+        return DigestUtils.md5DigestAsHex(content.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
