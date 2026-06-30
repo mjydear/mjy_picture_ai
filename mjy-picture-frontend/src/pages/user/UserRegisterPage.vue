@@ -1,6 +1,6 @@
 <template>
   <div id="userRegisterPage">
-    <h2 class="title">鱼皮云图库 - 用户注册</h2>
+    <h2 class="title">云图库 - 用户注册</h2>
     <div class="desc">企业级智能协同云图库</div>
     <a-form :model="formState" name="basic" autocomplete="off" @finish="handleSubmit">
       <a-form-item name="userAccount" :rules="[{ required: true, message: '请输入账号' }]">
@@ -76,25 +76,54 @@ const handleSubmit = async (values: any) => {
 
 <style scoped>
 #userRegisterPage {
-  max-width: 360px;
-  margin: 0 auto;
+  max-width: 420px;
+  margin: 48px auto;
+  padding: 40px 36px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(31, 38, 135, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .title {
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(120deg, #4f46e5, #8b5cf6 45%, #06b6d4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .desc {
   text-align: center;
-  color: #bbb;
-  margin-bottom: 16px;
+  color: #9aa0b3;
+  margin-bottom: 28px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
 }
 
 .tips {
-  color: #bbb;
+  color: #b0b3c0;
   text-align: right;
   font-size: 13px;
   margin-bottom: 16px;
+}
+
+#userRegisterPage :deep(.ant-input),
+#userRegisterPage :deep(.ant-input-affix-wrapper) {
+  border-radius: 10px;
+  padding-block: 9px;
+}
+
+#userRegisterPage :deep(.ant-btn-primary) {
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(120deg, #4f46e5, #8b5cf6);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.32);
 }
 </style>

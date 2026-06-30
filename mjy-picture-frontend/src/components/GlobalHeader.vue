@@ -5,7 +5,10 @@
         <router-link to="/">
           <div class="title-bar">
             <img class="logo" src="../assets/logo.png" alt="logo" />
-            <div class="title">鱼皮云图库</div>
+            <div class="title-text">
+              <div class="title">云图库</div>
+              <div class="subtitle">CLOUD GALLERY</div>
+            </div>
           </div>
         </router-link>
       </a-col>
@@ -88,11 +91,6 @@ const originItems = [
     label: '空间管理',
     title: '空间管理',
   },
-  {
-    key: 'others',
-    label: h('a', { href: 'https://www.codefather.cn', target: '_blank' }, '编程导航'),
-    title: '编程导航',
-  },
 ]
 
 // 根据权限过滤菜单项
@@ -146,15 +144,85 @@ const doLogout = async () => {
 #globalHeader .title-bar {
   display: flex;
   align-items: center;
+  gap: 14px;
+  transition: transform 0.25s ease;
 }
 
-.title {
-  color: black;
-  font-size: 18px;
-  margin-left: 16px;
+#globalHeader .title-bar:hover {
+  transform: translateY(-1px);
 }
 
 .logo {
-  height: 48px;
+  height: 42px;
+  width: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.28);
+}
+
+.title-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: linear-gradient(120deg, #4f46e5, #8b5cf6 45%, #06b6d4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: #b3b6c4;
+  margin-top: 2px;
+}
+
+/* 顶部菜单美化 */
+#globalHeader :deep(.ant-menu-horizontal) {
+  border-bottom: none;
+  background: transparent;
+  font-weight: 500;
+}
+
+#globalHeader :deep(.ant-menu-horizontal .ant-menu-item) {
+  border-radius: 10px;
+  margin-inline: 4px;
+  transition: all 0.2s ease;
+}
+
+#globalHeader :deep(.ant-menu-horizontal .ant-menu-item::after) {
+  display: none !important;
+}
+
+#globalHeader :deep(.ant-menu-horizontal .ant-menu-item:hover) {
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+#globalHeader :deep(.ant-menu-horizontal .ant-menu-item-selected) {
+  color: #4f46e5;
+  background: linear-gradient(120deg, rgba(79, 70, 229, 0.12), rgba(139, 92, 246, 0.12));
+}
+
+.user-login-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.user-login-status :deep(.ant-btn-primary) {
+  border: none;
+  border-radius: 10px;
+  padding-inline: 22px;
+  background: linear-gradient(120deg, #4f46e5, #8b5cf6);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.32);
 }
 </style>
