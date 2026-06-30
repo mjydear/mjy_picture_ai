@@ -30,6 +30,7 @@ import com.yupi.yupicture.domain.picture.valueobject.PictureReviewStatusEnum;
 import com.yupi.yupicture.interfaces.vo.picture.PictureTagCategory;
 import com.yupi.yupicture.interfaces.vo.picture.PictureVO;
 import com.yupi.yupicture.application.service.PictureApplicationService;
+import com.yupi.yupicture.application.service.PictureHotRankService;
 import com.yupi.yupicture.application.service.SpaceApplicationService;
 import com.yupi.yupicture.application.service.UserApplicationService;
 import com.yupi.yupicture.shared.cache.MultiLevelCacheService;
@@ -58,6 +59,9 @@ public class PictureController {
 
     @Resource
     private PictureApplicationService pictureApplicationService;
+
+    @Resource
+    private PictureHotRankService pictureHotRankService;
 
     @Resource
     private SpaceApplicationService spaceApplicationService;
@@ -189,10 +193,14 @@ public class PictureController {
             ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
         }
         // 获取权限列表
-        User loginUser = userApplicationService.getLoginUser(request);
+        User loginUser = null;
+        if (spaceId != null || StpKit.SPACE.isLogin()) {
+            loginUser = userApplicationService.getLoginUser(request);
+        }
         List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);
         PictureVO pictureVO = pictureApplicationService.getPictureVO(picture, request);
         pictureVO.setPermissionList(permissionList);
+        pictureHotRankService.recordView(picture);
         // 获取封装类
         return ResultUtils.success(pictureVO);
     }
@@ -333,6 +341,16 @@ public class PictureController {
         pictureTagCategory.setTagList(tagList);
         pictureTagCategory.setCategoryList(categoryList);
         return ResultUtils.success(pictureTagCategory);
+    }
+
+    /**
+     * 获取热门图片排行榜
+     */
+    @GetMapping("/rank/hot")
+    public BaseResponse<List<PictureVO>> listHotPictureRank(@RequestParam(defaultValue = "20") Integer topN,
+                                                            HttpServletRequest request) {
+        ThrowUtils.throwIf(topN == null || topN <= 0 || topN > 50, ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(pictureHotRankService.listHotPictures(topN, request));
     }
 
     /**
