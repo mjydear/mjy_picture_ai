@@ -56,13 +56,13 @@ spring:
               strategy: standard
               algorithmClassName: com.yupi.yupicture.shared.sharding.PictureShardingAlgorithm
     props:
-      sql-show: true
+      sql-show: false
 mybatis-plus:
   configuration:
     # MyBatis 配置
     map-underscore-to-camel-case: false
-    # 仅在开发环境打印日志
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 关闭 SQL 日志打印（高并发下 StdOutImpl 的 System.out 同步锁是瓶颈），调试时改回 StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
   global-config:
     enable-sql-runner: true
     db-config:
