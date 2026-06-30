@@ -1,0 +1,12 @@
+# 界面截图目录
+# 当前 README 引用本目录下的 .svg 占位图（统一风格，渲染不破图）。
+# 替换为真实截图的两种方式：
+#   1) 把截图保存为同名 .svg 覆盖；或
+#   2) 保存为 01-home.png 等，并把 README 中对应 <img src> 后缀改成你的格式（或发我替换）。
+# 文件清单：
+#   01-home            公共图库首页
+#   02-picture-detail  图片详情
+#   03-upload          图片上传
+#   04-space-analyze   空间分析
+#   05-team-space      团队空间
+#   06-login           登录 / 注册

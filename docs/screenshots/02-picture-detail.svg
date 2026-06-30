@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" font-family="Segoe UI, 'Microsoft YaHei', sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef0ff"/>
+      <stop offset="1" stop-color="#f6f0ff"/>
+    </linearGradient>
+    <linearGradient id="txt" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="0.5" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="468" height="288" rx="18" fill="url(#bg)" stroke="#e3e6f5"/>
+  <circle cx="32" cy="34" r="6" fill="#ff5f57"/>
+  <circle cx="52" cy="34" r="6" fill="#febc2e"/>
+  <circle cx="72" cy="34" r="6" fill="#28c840"/>
+  <rect x="100" y="26" width="350" height="16" rx="8" fill="#ffffff" stroke="#e3e6f5"/>
+  <text x="240" y="150" text-anchor="middle" font-size="34">🖼️</text>
+  <text x="240" y="198" text-anchor="middle" font-size="25" font-weight="700" fill="url(#txt)">图片详情</text>
+  <text x="240" y="228" text-anchor="middle" font-size="13" fill="#9aa0b3">界面示意 · 待替换真实截图</text>
+</svg>

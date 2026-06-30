@@ -274,6 +274,45 @@ flowchart TD
 
 ---
 
+## 界面展示
+
+> 平台核心页面预览（当前为统一风格占位图，替换为真实截图后即生效）。图片统一存放在 `docs/screenshots/` 目录，可按需增删。
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/01-home.svg" alt="公共图库首页" width="100%" /><br/>
+      <sub><b>公共图库首页</b> · 图片瀑布流、分类标签与多条件检索</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/02-picture-detail.svg" alt="图片详情" width="100%" /><br/>
+      <sub><b>图片详情</b> · 大图预览、元信息展示与编辑入口</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/03-upload.svg" alt="图片上传" width="100%" /><br/>
+      <sub><b>图片上传</b> · 本地上传 / URL 导入 / 批量抓取</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/04-space-analyze.svg" alt="空间分析" width="100%" /><br/>
+      <sub><b>空间分析</b> · ECharts 多维度统计可视化</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/05-team-space.svg" alt="团队空间协作" width="100%" /><br/>
+      <sub><b>团队空间</b> · 成员管理与空间级权限协作</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/06-login.svg" alt="登录注册" width="100%" /><br/>
+      <sub><b>登录 / 注册</b> · 卡片化界面与统一主题风格</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 运行项目
 
 ### 环境要求
