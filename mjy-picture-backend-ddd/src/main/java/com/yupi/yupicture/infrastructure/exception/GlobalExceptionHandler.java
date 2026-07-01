@@ -29,7 +29,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public BaseResponse<?> businessExceptionHandler(BusinessException e) {
-        log.error("BusinessException", e);
+        if (e.getCode() == ErrorCode.RATE_LIMIT_ERROR.getCode()) {
+            log.warn("RateLimitException: {}", e.getMessage());
+        } else {
+            log.error("BusinessException", e);
+        }
         return ResultUtils.error(e.getCode(), e.getMessage());
     }
 
